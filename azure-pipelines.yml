@@ -1,0 +1,70 @@
+# This is a hacky workaround to (at least) get some analyzer warnings in the Azure Devops build summary / build log for .NET Core projects
+# Be sure to change the DotNetCoreInstaller version to the needed version
+# Explanation: 
+# 'dotnet build --no-incremental /flp:v=q /flp:logfile=MyLog.log'
+# no-incremental => makes sure that the solution is being rebuild instead of just build. 
+# /flp:v=q => sets the verbosity to quiet (= errors + warnings) for the logging. The errors + warnings is what we need for the powershell task. 
+# /flp:logfile=MyLog.log => the name of the logfile, if not specified the default value of msbuild.log is used. 
+
+# The display build issues task gets the content of the build log file (which only contain the needed errors + warnings)
+# Then a lot of magical regex is done which results in some fancy output in the build summary. 
+# The build Log tab still has an open issue about only showing a max of 10 warnings, however in the Summary tab all the warnings are shown.
+
+trigger: none
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+- task: DotNetCoreInstaller@0
+  displayName: 'Use .NET Core sdk 2.2.102'
+  inputs:
+    version: 2.2.102
+
+- task: DotNetCoreCLI@2
+  displayName: 'Dotnet build solution'
+  inputs:
+    command: build
+    arguments: '--no-incremental /flp:v=q /flp:logfile=MyLog.log'
+    projects: '$(solution)'
+
+- task: PowerShell@2
+  displayName: 'Display build issues'
+  condition: succeededOrFailed()
+  inputs:
+    targetType: 'inline'
+    script: '
+      $output = Get-Content -Path "$(System.DefaultWorkingDirectory)/MyLog.log";
+      $warnings = $output | Select-String -Pattern ".*:\s";
+      $hasErrors = $false;
+      [regex]$issueTypeRegex = "(warning|error)";
+      [regex]$issueLocationRegex = "(\d+,\d+)";
+      [regex]$sourcePathRegex = "^[^/(]*";
+      [regex]$issueCodeRegex = "(?<=(warning|error) )[A-Za-z0-9]+";
+      [regex]$messageRegex = "(?<=((warning|error) [A-Za-z0-9]+: )).*";
+      $warnings | Foreach-Object { 
+        $issueLocationMatch = $issueLocationRegex.Matches($_)[0];
+        $issueLocation = $issueLocationMatch.value.split(",");
+        $issueType = $issueTypeRegex.Matches($_)[0];
+        $sourcepath = $sourcePathRegex.Matches($_)[0];
+        $linenumber = $issueLocation[0];
+        $columnnumber = $issueLocation[1];
+        $issueCode = $issueCodeRegex.Matches($_)[0];
+        $message = $messageRegex.Matches($_)[0];
+      
+        Write-Host "##vso[task.logissue type=$issueType;sourcepath=$sourcepath;linenumber=$linenumber;columnnumber=$columnnumber;code=$issueCode;]$message";
+        if($issueType.Value -eq "error") { $hasErrors = $true; }
+      };
+      if($warnings.Count -gt 0 -and $hasErrors -eq $true) { Write-Host "##vso[task.complete result=Failed;]There are build errors"; } 
+      elseif($warnings.Count -gt 0 -and $hasErrors -eq $false) { Write-Host "##vso[task.complete result=SucceededWithIssues;]There are build warnings"; } '
+
+- task: DotNetCoreCLI@2
+  displayName: "Dotnet test solution"
+  inputs:
+    command: 'test'
+    projects: '$(solution)'
