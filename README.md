@@ -43,6 +43,7 @@ This is done in the `azure-pipelines.yml` in this repo. You are free to copy thi
     elseif($warnings.Count -gt 0 -and $hasErrors -eq $false) { Write-Host "##vso[task.complete result=SucceededWithIssues;]There are build warnings"; } 
       ```
       <br/>
+      
       ![image](https://user-images.githubusercontent.com/20542194/59512558-7fb92200-8ea8-11e9-8249-721400699364.png)
       Update the `Control Options: Run this task` to `Even if a previous task has failed, unless the build was cancelled` to make sure that this script will run after a failing build which might be caused by CA errors. 
       ![image](https://user-images.githubusercontent.com/20542194/59512609-9c555a00-8ea8-11e9-9b82-d871d2e0e42a.png)
