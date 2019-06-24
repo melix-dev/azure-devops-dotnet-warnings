@@ -49,7 +49,9 @@ steps:
       [regex]$messageRegex = "(?<=((warning|error) [A-Za-z0-9]+: )).*";
       $warnings | Foreach-Object { 
         $issueLocationMatch = $issueLocationRegex.Matches($_)[0];
-        $issueLocation = $issueLocationMatch.value.split(",");
+        if ($issueLocationMatch) { $issueLocation = $issueLocationMatch.value.split(","); }
+        else { $issueLocation = "unknown"; }
+      
         $issueType = $issueTypeRegex.Matches($_)[0];
         $sourcepath = $sourcePathRegex.Matches($_)[0];
         $linenumber = $issueLocation[0];
