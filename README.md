@@ -28,6 +28,9 @@ This is done in the `azure-pipelines.yml` in this repo. You are free to copy thi
     [regex]$messageRegex = "(?<=((warning|error) [A-Za-z0-9]+: )).*";
     $warnings | Foreach-Object { 
       $issueLocationMatch = $issueLocationRegex.Matches($_)[0];
+      if ($issueLocationMatch) { $issueLocation = $issueLocationMatch.value.split(","); }
+      else { $issueLocation = "unknown"; }
+      
       $issueLocation = $issueLocationMatch.value.split(",");
       $issueType = $issueTypeRegex.Matches($_)[0];
       $sourcepath = $sourcePathRegex.Matches($_)[0];
