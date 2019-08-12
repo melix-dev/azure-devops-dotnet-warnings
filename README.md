@@ -1,5 +1,6 @@
 # azure-devops-dotnet-warnings
 Show build issues (warnings / errors) in Azure Devops for .NET Core projects. 
+Solution for the issue mentioned here: https://github.com/microsoft/azure-pipelines-tasks/issues/7749
 
 ## The problem
 When building .NET core projects in the Azure Devops pipeline with the dotnetcli, the build warnings are not shown in the Build Log / Build Summary views. 
